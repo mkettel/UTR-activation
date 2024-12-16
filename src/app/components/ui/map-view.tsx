@@ -54,7 +54,7 @@ export default function MapView({ location, selectedCourt, onCourtSelect, sportF
       offset: 25,
       closeButton: false
     }).setHTML(`
-      <div class="p-2">
+      <div class="p-2 rounded-md">
         <h3 class="font-bold text-black text-sm">${court.name}</h3>
         <p class="text-xs text-gray-800 mt-1">${court.address}</p>
         <p class="text-xs text-gray-800 mt-1">${court.courtCount} courts • ${court.surface}</p>
@@ -106,6 +106,45 @@ export default function MapView({ location, selectedCourt, onCourtSelect, sportF
     });
   };
 
+  // Add 3D building layer
+  const add3DBuildings = (map: mapboxgl.Map) => {
+    // Add custom 3D building layer
+    map.addLayer({
+        'id': 'add-3d-buildings',
+        'source': 'composite',
+        'source-layer': 'building',
+        'filter': ['==', 'extrude', 'true'],
+        'type': 'fill-extrusion',
+        'minzoom': 15,
+        'paint': {
+            'fill-extrusion-color': '#aaa',
+
+            // Use an 'interpolate' expression to
+            // add a smooth transition effect to
+            // the buildings as the user zooms in.
+            'fill-extrusion-height': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                15,
+                0,
+                15.05,
+                ['get', 'height']
+            ],
+            'fill-extrusion-base': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                15,
+                0,
+                15.05,
+                ['get', 'min_height']
+            ],
+            'fill-extrusion-opacity': 0.6
+        }
+    },);
+  };
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -116,6 +155,15 @@ export default function MapView({ location, selectedCourt, onCourtSelect, sportF
       center: [mapCenter.lng, mapCenter.lat],
       zoom: zoom
     });
+
+    newMap.on('style.load', () => {
+        add3DBuildings(newMap);
+        
+        // Add navigation control with rotation capability
+        newMap.addControl(new mapboxgl.NavigationControl({
+          visualizePitch: true
+        }));
+      });
 
     newMap.on('move', () => {
       setLng(Number(newMap.getCenter().lng.toFixed(4)));

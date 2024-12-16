@@ -13,11 +13,20 @@ interface LocationSearchProps {
 }
 
 export default function LocationSearch({ onSearch, onLocationSelect }: LocationSearchProps) {
-  const [searchValue, setSearchValue] = useState('');
+    const [searchValue, setSearchValue] = useState('New York'); // Default to NYC
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+
+
+  useEffect(() => {
+    if (!searchValue) {
+      setSearchValue('New York');
+      onSearch('New York');
+      onLocationSelect(-74.0060, 40.7128); // NYC coordinates
+    }
+  }, []);
 
   const handleSearch = async (value: string) => {
     if (!value.trim()) {
