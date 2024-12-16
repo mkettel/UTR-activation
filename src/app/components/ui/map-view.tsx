@@ -6,12 +6,13 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface MapViewProps {
   location: string;
+  mapCenter: { lng: number; lat: number };
   selectedCourt: Court | null;
   onCourtSelect: (court: Court) => void;
   sportFilter: string;
 }
 
-export default function MapView({ location, selectedCourt, onCourtSelect, sportFilter }: MapViewProps) {
+export default function MapView({ location, selectedCourt, onCourtSelect, sportFilter, mapCenter }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<{ [key: string]: mapboxgl.Marker }>({});
@@ -112,7 +113,7 @@ export default function MapView({ location, selectedCourt, onCourtSelect, sportF
     const newMap = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
-      center: [lng, lat],
+      center: [mapCenter.lng, mapCenter.lat],
       zoom: zoom
     });
 
@@ -172,6 +173,17 @@ export default function MapView({ location, selectedCourt, onCourtSelect, sportF
       }
     }
   }, [selectedCourt]);
+
+  // Fly to map center
+    useEffect(() => {
+        if (map.current && mapCenter) {
+        map.current.flyTo({
+            center: [mapCenter.lng, mapCenter.lat],
+            zoom: 11,
+            essential: true
+        });
+        }
+    }, [mapCenter]);
 
   return (
     <motion.div 

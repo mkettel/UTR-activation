@@ -21,6 +21,11 @@ export default function Home() {
   const [selectedCourt, setSelectedCourt] = useState<Court | null>(null);
   const [searchLocation, setSearchLocation] = useState('');
   const [sportFilter, setSportFilter] = useState('all');
+  const [mapCenter, setMapCenter] = useState({ lng: -73.935242, lat: 40.730610 });
+
+  const handleLocationSelect = (lng: number, lat: number) => {
+    setMapCenter({ lng, lat });
+  };
 
   return (
     <motion.main 
@@ -32,6 +37,7 @@ export default function Home() {
       <Sidebar 
         selectedCourt={selectedCourt}
         onSearch={setSearchLocation}
+        onLocationSelect={handleLocationSelect}
         onFilterChange={setSportFilter}
         sportFilter={sportFilter}
         onCourtSelect={setSelectedCourt}
@@ -39,6 +45,7 @@ export default function Home() {
       <Suspense fallback={<LoadingFallback />}>
         <MapView 
           location={searchLocation}
+          mapCenter={mapCenter}
           onCourtSelect={setSelectedCourt}
           selectedCourt={selectedCourt}
           sportFilter={sportFilter}
