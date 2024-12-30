@@ -1,52 +1,65 @@
 import { motion } from 'framer-motion';
-import { Filter, MapPin, Sun, Moon } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { Court, mockCourts } from '../../data/courts';
-import LocationSearch from '../location-search';
+import { Filter, MapPin, Sun, Moon, ArrowLeft, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
+import { Court, mockCourts } from '@/app/data/courts';
+import { Tournament, mockTournaments } from '@/app/data/tournaments';
+import TournamentList from './TournamentList';
+import CourtList from './CourtList';
+import { filterItems } from '@/app/utils/filtering';
 
 interface SidebarProps {
+  mode: 'tournament' | 'play';
+  onModeSwitch: () => void;
   selectedCourt: Court | null;
+  selectedTournament: Tournament | null;
   onSearch: (location: string) => void;
   onLocationSelect: (lng: number, lat: number) => void;
   onFilterChange: (filter: string) => void;
   sportFilter: string;
   onCourtSelect: (court: Court | null) => void;
+  onTournamentSelect: (tournament: Tournament | null) => void;
+  searchLocation: string;
+  onBack: () => void;
 }
 
 export default function Sidebar({ 
+  mode,
+  onModeSwitch,
   selectedCourt, 
+  selectedTournament,
   onSearch, 
   onLocationSelect,
   onFilterChange, 
   sportFilter,
-  onCourtSelect 
+  onCourtSelect,
+  onTournamentSelect,
+  searchLocation,
+  onBack
 }: SidebarProps) {
-  const [selectedLocation, setSelectedLocation] = useState<string>('');
-
-  // Filter courts based on sport and location
-  const filteredCourts = mockCourts.filter(court => {
-    const matchesSport = sportFilter === 'all' ? true : court.sport === sportFilter || court.sport === 'both';
-    const matchesLocation = !selectedLocation || 
-      court.city.toLowerCase().includes(selectedLocation.toLowerCase()) ||
-      court.state.toLowerCase().includes(selectedLocation.toLowerCase());
-    return matchesSport && matchesLocation;
-  });
-
-  const handleLocationSelect = (searchText: string, lng: number, lat: number) => {
-    setSelectedLocation(searchText);
-    onSearch(searchText);
-    onLocationSelect(lng, lat);
+  const extractLocationParts = (location: string) => {
+    // Convert to lowercase for case-insensitive matching
+    const lowercaseLocation = location.toLowerCase();
+    
+    // Common US state abbreviations and full names that might appear in the address
+    const stateMatches = lowercaseLocation.match(/\b(ny|new york|nj|new jersey)\b/);
+    const cityMatches = lowercaseLocation.match(/\b(new york|brooklyn|queens|hoboken)\b/);
+    
+    return {
+      state: stateMatches ? stateMatches[0] : '',
+      city: cityMatches ? cityMatches[0] : ''
+    };
   };
+  
+  const filteredItems = mode === 'tournament' 
+  ? filterItems(mockTournaments, mode, sportFilter, searchLocation)
+  : filterItems(mockCourts, mode, sportFilter, searchLocation);
 
-  // In the Sidebar component
-  const handleCourtClick = (court: Court) => {
-    // If clicking the already selected court, deselect it
-    if (selectedCourt?.id === court.id) {
-      onCourtSelect(null);
-    } else {
-      onCourtSelect(court);
-    }
-  };
+  // Add debug logging
+  console.log('Filtered items:', filteredItems);
+  console.log('Search location:', searchLocation);
+  console.log('Sport filter:', sportFilter);
+  console.log('Mode:', mode);
+
 
   return (
     <motion.div 
@@ -55,14 +68,26 @@ export default function Sidebar({
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <h1 className="text-2xl text-black font-bold mb-6">Find Courts</h1>
-      
-      <div className="mb-6">
-        <LocationSearch 
-          onSearch={onSearch}
-          onLocationSelect={(lng, lat) => handleLocationSelect(selectedLocation, lng, lat)}
-        />
+      <div className="flex items-center justify-between mb-6">
+        <button 
+          onClick={onBack}
+          className="flex items-center text-gray-600 hover:text-gray-900"
+        >
+          <ArrowLeft className="h-5 w-5 mr-2" />
+          Back
+        </button>
+        <button
+          onClick={onModeSwitch}
+          className="flex items-center text-blue-600 hover:text-blue-800"
+        >
+          <RotateCcw className="h-4 w-4 mr-1" />
+          {mode === 'tournament' ? 'Switch to Play' : 'Find Tournaments'}
+        </button>
       </div>
+
+      <h1 className="text-2xl text-black font-bold mb-6">
+        {mode === 'tournament' ? 'Tournaments Near You' : 'Available Courts'}
+      </h1>
 
       <div className="mb-6">
         <div className="flex items-center mb-3">
@@ -80,48 +105,19 @@ export default function Sidebar({
         </select>
       </div>
 
-      <div className="space-y-4">
-        {filteredCourts.length === 0 ? (
-          <p className="text-center text-gray-600">No courts found in this area</p>
-        ) : (
-          <>
-            <p className="text-sm text-gray-600">
-              Showing {filteredCourts.length} {sportFilter === 'all' ? 'courts' : `${sportFilter} courts`}
-              {selectedLocation ? ` in ${selectedLocation}` : ''}
-            </p>
-            {filteredCourts.map(court => (
-              <div 
-                key={court.id}
-                className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
-                  selectedCourt?.id === court.id 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-200 hover:border-blue-300'
-                }`}
-                onClick={() => handleCourtClick(court)}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-800">{court.name}</h3>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    court.isOpen 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {court.isOpen ? 'Open' : 'Closed'}
-                  </span>
-                </div>
-                <div className="flex items-center text-gray-600 text-sm mb-2">
-                  <MapPin className="h-4 w-4 mr-1" />
-                  {court.address}
-                </div>
-                <div className="flex items-center justify-between text-sm text-gray-600">
-                  <span>{court.courtCount} courts • {court.surface}</span>
-                  <span>{court.lighting ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</span>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-      </div>
+      {mode === 'tournament' ? (
+        <TournamentList
+          tournaments={filteredItems as Tournament[]}
+          selectedTournament={selectedTournament}
+          onTournamentSelect={onTournamentSelect}
+        />
+      ) : (
+        <CourtList
+          courts={filteredItems as Court[]}
+          selectedCourt={selectedCourt}
+          onCourtSelect={onCourtSelect}
+        />
+      )}
     </motion.div>
   );
 }

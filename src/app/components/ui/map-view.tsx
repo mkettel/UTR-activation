@@ -1,110 +1,54 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import mapboxgl from 'mapbox-gl';
-import { Court, mockCourts } from '../../data/courts';
+import { Court, mockCourts } from '@/app/data/courts';
+import { Tournament, mockTournaments } from '@/app/data/tournaments';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { filterItems } from '@/app/utils/filtering';
 
 interface MapViewProps {
+  mode: 'tournament' | 'play';
   location: string;
   mapCenter: { lng: number; lat: number };
   selectedCourt: Court | null;
+  selectedTournament: Tournament | null;
   onCourtSelect: (court: Court | null) => void;
+  onTournamentSelect: (tournament: Tournament | null) => void;
   sportFilter: string;
 }
 
-export default function MapView({ location, selectedCourt, onCourtSelect, sportFilter, mapCenter }: MapViewProps) {
+export default function MapView({ 
+  mode,
+  location, 
+  selectedCourt,
+  selectedTournament,
+  onCourtSelect,
+  onTournamentSelect,
+  sportFilter, 
+  mapCenter 
+}: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<{ [key: string]: mapboxgl.Marker }>({});
-  const [lng, setLng] = useState(-73.935242);
-  const [lat, setLat] = useState(40.730610);
+  const [lng, setLng] = useState(mapCenter.lng);
+  const [lat, setLat] = useState(mapCenter.lat);
   const [zoom, setZoom] = useState(13);
   const [mapLoaded, setMapLoaded] = useState(false);
 
-  // Set your Mapbox token
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
-  // Filter courts based on sport
-  const getFilteredCourts = () => {
-    if (sportFilter === 'all') return mockCourts;
-    return mockCourts.filter(court => 
-      court.sport === sportFilter || court.sport === 'both'
-    );
+  const getFilteredItems = () => {
+    const items = mode === 'tournament' ? mockTournaments : mockCourts;
+    return filterItems(items, mode, sportFilter, location); // location is your searchLocation prop
   };
-
-  // Create marker element
-  const createMarkerElement = (court: Court) => {
-    const el = document.createElement('div');
-    el.className = 'cursor-pointer';
-    el.innerHTML = `
-      <div class="relative group">
-        <div class="w-8 h-8 bg-white rounded-full border-2 ${
-          court.isOpen ? 'border-green-500' : 'border-red-500'
-        } flex items-center justify-center shadow-lg transform transition-transform duration-200 hover:scale-110">
-          ${court.sport === 'tennis' ? '🎾' : court.sport === 'pickleball' ? '🏓' : '🎾/🏓'}
-        </div>
-      </div>
-    `;
-    return el;
-  };
-
-  // Create popup for marker
-  const createPopup = (court: Court) => {
-    return new mapboxgl.Popup({
-      offset: 25,
-      closeButton: false
-    }).setHTML(`
-      <div class="p-2">
-        <h3 class="font-bold text-black text-sm">${court.name}</h3>
-        <p class="text-xs text-gray-800 mt-1">${court.address}</p>
-        <p class="text-xs text-gray-800 mt-1">${court.courtCount} courts • ${court.surface}</p>
-        <p class="text-xs mt-2 ${court.isOpen ? 'text-green-600' : 'text-red-600'}">
-          ${court.isOpen ? 'Open' : 'Closed'}
-        </p>
-      </div>
-    `);
-  };
-
-  // Initialize markers
-  const initializeMarkers = () => {
-    if (!map.current) return;
-
-    getFilteredCourts().forEach(court => {
-      if (markersRef.current[court.id]) return; // Skip if marker already exists
-
-      const el = createMarkerElement(court);
-      const popup = createPopup(court);
-
-      const marker = new mapboxgl.Marker({
-        element: el,
-        anchor: 'bottom',
-        offset: [0, 0]
-      })
-        .setLngLat([court.location.lng, court.location.lat])
-        .setPopup(popup)
-        .addTo(map.current!);
-
-      el.addEventListener('click', () => {
-        // If clicking the already selected court, deselect it
-        if (selectedCourt?.id === court.id) {
-          onCourtSelect(null);
-          marker.togglePopup();
-        } else {
-          onCourtSelect(court);
-        }
-      });
-
-      markersRef.current[court.id] = marker;
-    });
-  };
-
+  
   // Update marker visibility
   const updateMarkerVisibility = () => {
-    const filteredCourts = getFilteredCourts();
-    const visibleCourtIds = new Set(filteredCourts.map(court => court.id));
-
+    const filteredItems = getFilteredItems();
+    const visibleIds = new Set(filteredItems.map(item => item.id));
+  
     Object.entries(markersRef.current).forEach(([id, marker]) => {
-      if (visibleCourtIds.has(id)) {
+      if (visibleIds.has(id)) {
         marker.getElement().style.display = '';
       } else {
         marker.getElement().style.display = 'none';
@@ -112,46 +56,140 @@ export default function MapView({ location, selectedCourt, onCourtSelect, sportF
     });
   };
 
-  // Add 3D building layer
+  // Create marker element based on mode
+  const createMarkerElement = (item: Court | Tournament) => {
+    const el = document.createElement('div');
+    el.className = 'cursor-pointer';
+    el.innerHTML = `
+      <div class="relative group">
+        <div class="w-8 h-8 bg-white rounded-full border-2 ${
+          mode === 'tournament' 
+            ? 'border-blue-500'
+            : (item as Court).isOpen ? 'border-green-500' : 'border-red-500'
+        } flex items-center justify-center shadow-lg transform transition-transform duration-200 hover:scale-110">
+          ${mode === 'tournament' ? '🏆' : (item as Court).sport === 'tennis' ? '🎾' : '🏓'}
+        </div>
+      </div>
+    `;
+    return el;
+  };
+
+  // Create popup content based on mode
+  const createPopup = (item: Court | Tournament) => {
+    return new mapboxgl.Popup({
+      offset: 25,
+      closeButton: false
+    }).setHTML(
+      mode === 'tournament' 
+        ? `
+          <div class="p-2">
+            <h3 class="font-bold text-black text-sm">${(item as Tournament).name}</h3>
+            <p class="text-xs text-gray-800 mt-1">${(item as Tournament).address}</p>
+            <p class="text-xs text-gray-800 mt-1">Level: ${(item as Tournament).level}</p>
+            <p class="text-xs mt-1">Spots: ${(item as Tournament).spotsAvailable}/${(item as Tournament).totalSpots}</p>
+          </div>
+        `
+        : `
+          <div class="p-2">
+            <h3 class="font-bold text-black text-sm">${(item as Court).name}</h3>
+            <p class="text-xs text-gray-800 mt-1">${(item as Court).address}</p>
+            <p class="text-xs text-gray-800 mt-1">${(item as Court).courtCount} courts • ${(item as Court).surface}</p>
+            <p class="text-xs mt-2 ${(item as Court).isOpen ? 'text-green-600' : 'text-red-600'}">
+              ${(item as Court).isOpen ? 'Open' : 'Closed'}
+            </p>
+          </div>
+        `
+    );
+  };
+
+  // Initialize markers
+  const initializeMarkers = () => {
+    if (!map.current) return;
+
+    // Clear existing markers
+    Object.values(markersRef.current).forEach(marker => marker.remove());
+    markersRef.current = {};
+
+    getFilteredItems().forEach(item => {
+      const el = createMarkerElement(item);
+      const popup = createPopup(item);
+
+      const marker = new mapboxgl.Marker({
+        element: el,
+        anchor: 'bottom',
+        offset: [0, 0]
+      })
+        .setLngLat([item.location.lng, item.location.lat])
+        .setPopup(popup)
+        .addTo(map.current!);
+
+      el.addEventListener('click', () => {
+        if (mode === 'tournament') {
+          if (selectedTournament?.id === item.id) {
+            onTournamentSelect(null);
+            marker.togglePopup();
+          } else {
+            onTournamentSelect(item as Tournament);
+          }
+        } else {
+          if (selectedCourt?.id === item.id) {
+            onCourtSelect(null);
+            marker.togglePopup();
+          } else {
+            onCourtSelect(item as Court);
+          }
+        }
+      });
+
+      markersRef.current[item.id] = marker;
+    });
+  };
+
   const add3DBuildings = (map: mapboxgl.Map) => {
     // Add custom 3D building layer
     map.addLayer({
-        'id': 'add-3d-buildings',
-        'source': 'composite',
-        'source-layer': 'building',
-        'filter': ['==', 'extrude', 'true'],
-        'type': 'fill-extrusion',
-        'minzoom': 15,
-        'paint': {
-            'fill-extrusion-color': '#aaa',
-
-            // Use an 'interpolate' expression to
-            // add a smooth transition effect to
-            // the buildings as the user zooms in.
-            'fill-extrusion-height': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                15,
-                0,
-                15.05,
-                ['get', 'height']
-            ],
-            'fill-extrusion-base': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                15,
-                0,
-                15.05,
-                ['get', 'min_height']
-            ],
-            'fill-extrusion-opacity': 0.6
-        }
-    },);
+      'id': '3d-buildings',
+      'source': 'composite',
+      'source-layer': 'building',
+      'filter': ['==', 'extrude', 'true'],
+      'type': 'fill-extrusion',
+      'minzoom': 15,
+      'paint': {
+        'fill-extrusion-color': [
+          'interpolate',
+          ['linear'],
+          ['get', 'height'],
+          0, '#e6e6e6',
+          50, '#d9d9d9',
+          100, '#cccccc',
+          200, '#bfbfbf',
+          400, '#b3b3b3'
+        ],
+        'fill-extrusion-height': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          15,
+          0,
+          15.05,
+          ['get', 'height']
+        ],
+        'fill-extrusion-base': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          15,
+          0,
+          15.05,
+          ['get', 'min_height']
+        ],
+        'fill-extrusion-opacity': 0.6,
+        'fill-extrusion-vertical-gradient': true
+      }
+    }, 'waterway-label');
   };
 
-  // Initialize map
+  // Map initialization and cleanup
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
@@ -163,13 +201,11 @@ export default function MapView({ location, selectedCourt, onCourtSelect, sportF
     });
 
     newMap.on('style.load', () => {
-        add3DBuildings(newMap);
-        
-        // Add navigation control with rotation capability
-        newMap.addControl(new mapboxgl.NavigationControl({
-          visualizePitch: true
-        }));
-      });
+      add3DBuildings(newMap);
+      newMap.addControl(new mapboxgl.NavigationControl({
+        visualizePitch: true
+      }));
+    });
 
     newMap.on('move', () => {
       setLng(Number(newMap.getCenter().lng.toFixed(4)));
@@ -195,65 +231,49 @@ export default function MapView({ location, selectedCourt, onCourtSelect, sportF
     };
   }, []);
 
-  // Update marker visibility when filter changes
+  // Update markers when mode or filter changes
   useEffect(() => {
     if (mapLoaded) {
-      updateMarkerVisibility();
+      initializeMarkers();
     }
-  }, [sportFilter, mapLoaded]);
+  }, [mode, sportFilter, mapLoaded]);
 
-  // Update map center when location search changes
+  // Handle selected item changes
   useEffect(() => {
-    if (location && map.current) {
+    if (!map.current) return;
+
+    const selectedItem = mode === 'tournament' ? selectedTournament : selectedCourt;
+    if (selectedItem) {
       map.current.flyTo({
-        center: [lng, lat],
-        zoom: 14,
-        essential: true
+        center: [selectedItem.location.lng, selectedItem.location.lat],
+        zoom: 17,
+        pitch: 60,
+        bearing: 45,
+        essential: true,
+        duration: 2000,
+        curve: 1.5,
       });
-    }
-  }, [location]);
-
-  // Handle selected court
-  useEffect(() => {
-    if (selectedCourt && map.current) {
-      const marker = markersRef.current[selectedCourt.id];
-      if (marker) {
-        map.current.flyTo({
-          center: [selectedCourt.location.lng, selectedCourt.location.lat],
-          zoom: 17, // Increased zoom level from 15
-          pitch: 60, // Add a tilted perspective (0-85 degrees, where 0 is looking straight down)
-          bearing: 45, // Rotate the map view slightly for more dynamic perspective
-          essential: true,
-          duration: 2000, // Longer animation duration for smoother transition
-          curve: 1.5, // Add some easing to the animation
-        });
-        marker.togglePopup();
-      }
-    }
-  }, [selectedCourt]);
-  
-  // Optionally, we can also reset the view when deselecting a court
-  useEffect(() => {
-    if (!selectedCourt && map.current) {
+      markersRef.current[selectedItem.id]?.togglePopup();
+    } else {
       map.current.flyTo({
-        pitch: 0, // Reset to top-down view
-        bearing: 0, // Reset rotation
-        zoom: 13, // Reset to default zoom
+        pitch: 0,
+        bearing: 0,
+        zoom: 13,
         duration: 1500,
       });
     }
-  }, [selectedCourt]);
+  }, [selectedCourt, selectedTournament]);
 
-  // Fly to map center
-    useEffect(() => {
-        if (map.current && mapCenter) {
-        map.current.flyTo({
-            center: [mapCenter.lng, mapCenter.lat],
-            zoom: 11,
-            essential: true
-        });
-        }
-    }, [mapCenter]);
+  // Update map center
+  useEffect(() => {
+    if (map.current && mapCenter) {
+      map.current.flyTo({
+        center: [mapCenter.lng, mapCenter.lat],
+        zoom: 11,
+        essential: true
+      });
+    }
+  }, [mapCenter]);
 
   return (
     <motion.div 
