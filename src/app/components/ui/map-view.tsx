@@ -5,6 +5,7 @@ import { Court, mockCourts } from '@/app/data/courts';
 import { Tournament, mockTournaments } from '@/app/data/tournaments';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { filterItems } from '@/app/utils/filtering';
+import * as turf from '@turf/turf';
 
 interface MapViewProps {
   mode: 'tournament' | 'play';
@@ -36,12 +37,14 @@ export default function MapView({
   const [lat, setLat] = useState(mapCenter.lat);
   const [zoom, setZoom] = useState(13);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const radiusCircleRef = useRef<mapboxgl.Layer | null>(null);
 
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
   const getFilteredItems = () => {
     const items = mode === 'tournament' ? mockTournaments : mockCourts;
     return filterItems(items, mode, sportFilter, location, mapCenter, searchRadius);
+    
   };
   
   // Update marker visibility
@@ -78,6 +81,7 @@ export default function MapView({
 
   // Create popup content based on mode
   const createPopup = (item: Court | Tournament) => {
+    console.log('data', item)
     return new mapboxgl.Popup({
       offset: 25,
       closeButton: false
@@ -89,6 +93,7 @@ export default function MapView({
             <p class="text-xs text-gray-800 mt-1">${(item as Tournament).address}</p>
             <p class="text-xs text-gray-800 mt-1">Level: ${(item as Tournament).level}</p>
             <p class="text-xs mt-1">Spots: ${(item as Tournament).spotsAvailable}/${(item as Tournament).totalSpots}</p>
+            <p class="text-xs mt-1">Price: $${(item as Tournament).price}</p>            
           </div>
         `
         : `
@@ -102,6 +107,54 @@ export default function MapView({
           </div>
         `
     );
+  };
+
+  const updateRadiusCircle = () => {
+    if (!map.current) return;
+  
+    // Remove existing circle if it exists
+    if (map.current.getSource('radius-circle')) {
+      map.current.removeLayer('radius-circle-fill');
+      map.current.removeLayer('radius-circle-outline');
+      map.current.removeSource('radius-circle');
+    }
+  
+    // Convert radius from miles to kilometers (mapbox uses kilometers)
+    const radiusInKm = searchRadius * 1.60934;
+  
+    // Create a circle feature
+    const center: [number, number] = [mapCenter.lng, mapCenter.lat];
+    const options = { steps: 64, units: 'kilometers' as const };
+    const circle = turf.circle(center, radiusInKm, options);
+  
+    // Add the circle source and layers
+    map.current.addSource('radius-circle', {
+      type: 'geojson',
+      data: circle
+    });
+  
+    // Add fill layer
+    map.current.addLayer({
+      id: 'radius-circle-fill',
+      type: 'fill',
+      source: 'radius-circle',
+      paint: {
+        'fill-color': '#4dabf7',
+        'fill-opacity': 0.15
+      }
+    });
+  
+    // Add outline layer
+    map.current.addLayer({
+      id: 'radius-circle-outline',
+      type: 'line',
+      source: 'radius-circle',
+      paint: {
+        'line-color': '#4dabf7',
+        'line-width': 2,
+        'line-dasharray': [2, 2]
+      }
+    });
   };
 
   // Initialize markers
@@ -227,6 +280,12 @@ export default function MapView({
       markersRef.current = {};
       
       if (map.current) {
+        // Remove radius circle layers and source
+        if (map.current.getSource('radius-circle')) {
+          map.current.removeLayer('radius-circle-fill');
+          map.current.removeLayer('radius-circle-outline');
+          map.current.removeSource('radius-circle');
+        }
         map.current.remove();
         map.current = null;
       }
@@ -239,6 +298,12 @@ export default function MapView({
       initializeMarkers();
     }
   }, [mode, sportFilter, mapLoaded, searchRadius]);
+
+  useEffect(() => {
+    if (mapLoaded && map.current) {
+      updateRadiusCircle();
+    }
+  }, [mapCenter, searchRadius, mapLoaded]);
 
   // Handle selected item changes
   useEffect(() => {
@@ -271,7 +336,7 @@ export default function MapView({
     if (map.current && mapCenter) {
       map.current.flyTo({
         center: [mapCenter.lng, mapCenter.lat],
-        zoom: 11,
+        zoom: 12,
         essential: true
       });
     }

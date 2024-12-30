@@ -9,7 +9,7 @@ interface SearchResult {
 
 interface LocationSearchProps {
   onSearch: (location: string) => void;
-  onLocationSelect: (lng: number, lat: number) => void;
+  onLocationSelect: (lng: number, lat: number, locationName?: string) => void; // Update this line
 }
 
 export default function LocationSearch({ onSearch, onLocationSelect }: LocationSearchProps) {

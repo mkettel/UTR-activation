@@ -34,7 +34,7 @@ export default function Home() {
   const [searchLocation, setSearchLocation] = useState('');
   const [sportFilter, setSportFilter] = useState('all');
   const [mapCenter, setMapCenter] = useState({ lng: -73.935242, lat: 40.730610 });
-  const [searchRadius, setSearchRadius] = useState(10); // Default 10 mile radius
+  const [searchRadius, setSearchRadius] = useState(4); // Default 10 mile radius
 
   const handlePathSelect = (selectedMode: Mode) => {
     setMode(selectedMode);
@@ -68,7 +68,12 @@ export default function Home() {
             >
               <LandingChoice onPathSelect={handlePathSelect} />
             </motion.div>
-            <motion.div>
+            <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            exit={{ opacity: 0 }}
+            >
               <img className='w-full h-full' src="pickle-bg.webp" alt="" />
             </motion.div>
           </div>

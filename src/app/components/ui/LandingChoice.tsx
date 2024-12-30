@@ -15,7 +15,7 @@ export default function LandingChoice({ onPathSelect }: LandingChoiceProps) {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onPathSelect('tournament')}
-          className="w-full p-6 bg-blue-50 hover:bg-blue-100 rounded-xl border-2 border-blue-200 
+          className="w-full p-6 min-h-36 bg-blue-50 hover:bg-blue-100 rounded-xl border-2 border-blue-200 
                    flex items-center transition-colors duration-200"
         >
           <Trophy className="h-8 w-8 text-blue-600 mr-4" />
@@ -29,7 +29,7 @@ export default function LandingChoice({ onPathSelect }: LandingChoiceProps) {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onPathSelect('play')}
-          className="w-full p-6 bg-green-50 hover:bg-green-100 rounded-xl border-2 border-green-200 
+          className="w-full p-6 min-h-36 bg-green-50 hover:bg-green-100 rounded-xl border-2 border-green-200 
                    flex items-center transition-colors duration-200"
         >
           <PlayCircle className="h-8 w-8 text-green-600 mr-4" />

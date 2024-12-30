@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Filter, MapPin, Sun, Moon, ArrowLeft, RotateCcw } from 'lucide-react';
+import { Filter, MapPin, Sun, Moon, ArrowLeft, RotateCcw, MoveHorizontal } from 'lucide-react';
 import { useState } from 'react';
 import { Court, mockCourts } from '@/app/data/courts';
 import { Tournament, mockTournaments } from '@/app/data/tournaments';
@@ -84,9 +84,8 @@ export default function Sidebar({
         </button>
         <button
           onClick={onModeSwitch}
-          className="flex items-center text-blue-600 hover:text-blue-800"
+          className="flex items-center border p-2 border-blue-400 rounded-md text-blue-600 hover:text-blue-800"
         >
-          <RotateCcw className="h-4 w-4 mr-1" />
           {mode === 'tournament' ? 'Switch to Play' : 'Find Tournaments'}
         </button>
       </div>
