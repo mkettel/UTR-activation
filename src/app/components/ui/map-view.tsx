@@ -8,7 +8,7 @@ interface MapViewProps {
   location: string;
   mapCenter: { lng: number; lat: number };
   selectedCourt: Court | null;
-  onCourtSelect: (court: Court) => void;
+  onCourtSelect: (court: Court | null) => void;
   sportFilter: string;
 }
 
@@ -54,7 +54,7 @@ export default function MapView({ location, selectedCourt, onCourtSelect, sportF
       offset: 25,
       closeButton: false
     }).setHTML(`
-      <div class="p-2 rounded-md">
+      <div class="p-2">
         <h3 class="font-bold text-black text-sm">${court.name}</h3>
         <p class="text-xs text-gray-800 mt-1">${court.address}</p>
         <p class="text-xs text-gray-800 mt-1">${court.courtCount} courts • ${court.surface}</p>
@@ -85,7 +85,13 @@ export default function MapView({ location, selectedCourt, onCourtSelect, sportF
         .addTo(map.current!);
 
       el.addEventListener('click', () => {
-        onCourtSelect(court);
+        // If clicking the already selected court, deselect it
+        if (selectedCourt?.id === court.id) {
+          onCourtSelect(null);
+          marker.togglePopup();
+        } else {
+          onCourtSelect(court);
+        }
       });
 
       markersRef.current[court.id] = marker;
@@ -214,11 +220,27 @@ export default function MapView({ location, selectedCourt, onCourtSelect, sportF
       if (marker) {
         map.current.flyTo({
           center: [selectedCourt.location.lng, selectedCourt.location.lat],
-          zoom: 15,
-          essential: true
+          zoom: 17, // Increased zoom level from 15
+          pitch: 60, // Add a tilted perspective (0-85 degrees, where 0 is looking straight down)
+          bearing: 45, // Rotate the map view slightly for more dynamic perspective
+          essential: true,
+          duration: 2000, // Longer animation duration for smoother transition
+          curve: 1.5, // Add some easing to the animation
         });
         marker.togglePopup();
       }
+    }
+  }, [selectedCourt]);
+  
+  // Optionally, we can also reset the view when deselecting a court
+  useEffect(() => {
+    if (!selectedCourt && map.current) {
+      map.current.flyTo({
+        pitch: 0, // Reset to top-down view
+        bearing: 0, // Reset rotation
+        zoom: 13, // Reset to default zoom
+        duration: 1500,
+      });
     }
   }, [selectedCourt]);
 

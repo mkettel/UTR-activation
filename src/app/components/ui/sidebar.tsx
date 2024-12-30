@@ -10,7 +10,7 @@ interface SidebarProps {
   onLocationSelect: (lng: number, lat: number) => void;
   onFilterChange: (filter: string) => void;
   sportFilter: string;
-  onCourtSelect: (court: Court) => void;
+  onCourtSelect: (court: Court | null) => void;
 }
 
 export default function Sidebar({ 
@@ -38,8 +38,14 @@ export default function Sidebar({
     onLocationSelect(lng, lat);
   };
 
+  // In the Sidebar component
   const handleCourtClick = (court: Court) => {
-    onCourtSelect(court);
+    // If clicking the already selected court, deselect it
+    if (selectedCourt?.id === court.id) {
+      onCourtSelect(null);
+    } else {
+      onCourtSelect(court);
+    }
   };
 
   return (
@@ -61,7 +67,7 @@ export default function Sidebar({
       <div className="mb-6">
         <div className="flex items-center mb-3">
           <Filter className="h-5 text-gray-800 w-5 mr-2" />
-          <h2 className="text-lg text-gray-800 font-semibold">Filters</h2>
+          <h2 className="text-lg text-gray-800 font-semibold">Sport</h2>
         </div>
         <select
           className="w-full p-2 border text-gray-600 border-gray-800 rounded-lg"
