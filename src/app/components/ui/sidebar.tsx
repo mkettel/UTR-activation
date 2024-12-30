@@ -6,6 +6,7 @@ import { Tournament, mockTournaments } from '@/app/data/tournaments';
 import TournamentList from './TournamentList';
 import CourtList from './CourtList';
 import { filterItems } from '@/app/utils/filtering';
+import RadiusSelector from './RadiusSelector';
 
 interface SidebarProps {
   mode: 'tournament' | 'play';
@@ -20,6 +21,9 @@ interface SidebarProps {
   onTournamentSelect: (tournament: Tournament | null) => void;
   searchLocation: string;
   onBack: () => void;
+  mapCenter: { lat: number; lng: number }; // Add this prop
+  searchRadius: number; // Add this prop
+  onRadiusChange: (radius: number) => void;
 }
 
 export default function Sidebar({ 
@@ -34,7 +38,10 @@ export default function Sidebar({
   onCourtSelect,
   onTournamentSelect,
   searchLocation,
-  onBack
+  onBack,
+  mapCenter,
+  searchRadius, 
+  onRadiusChange
 }: SidebarProps) {
   const extractLocationParts = (location: string) => {
     // Convert to lowercase for case-insensitive matching
@@ -51,15 +58,14 @@ export default function Sidebar({
   };
   
   const filteredItems = mode === 'tournament' 
-  ? filterItems(mockTournaments, mode, sportFilter, searchLocation)
-  : filterItems(mockCourts, mode, sportFilter, searchLocation);
+  ? filterItems(mockTournaments, mode, sportFilter, searchLocation, mapCenter, searchRadius)
+  : filterItems(mockCourts, mode, sportFilter, searchLocation, mapCenter, searchRadius);
 
   // Add debug logging
   console.log('Filtered items:', filteredItems);
   console.log('Search location:', searchLocation);
   console.log('Sport filter:', sportFilter);
   console.log('Mode:', mode);
-
 
   return (
     <motion.div 
@@ -104,6 +110,13 @@ export default function Sidebar({
           <option value="pickleball">Pickleball Only</option>
         </select>
       </div>
+
+      <RadiusSelector
+        currentLocation={mapCenter}
+        radius={searchRadius}
+        onRadiusChange={onRadiusChange}
+        mode={mode}
+      />
 
       {mode === 'tournament' ? (
         <TournamentList

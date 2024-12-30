@@ -15,6 +15,7 @@ interface MapViewProps {
   onCourtSelect: (court: Court | null) => void;
   onTournamentSelect: (tournament: Tournament | null) => void;
   sportFilter: string;
+  searchRadius: number; // Add this prop
 }
 
 export default function MapView({ 
@@ -25,7 +26,8 @@ export default function MapView({
   onCourtSelect,
   onTournamentSelect,
   sportFilter, 
-  mapCenter 
+  mapCenter, 
+  searchRadius
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -39,7 +41,7 @@ export default function MapView({
 
   const getFilteredItems = () => {
     const items = mode === 'tournament' ? mockTournaments : mockCourts;
-    return filterItems(items, mode, sportFilter, location); // location is your searchLocation prop
+    return filterItems(items, mode, sportFilter, location, mapCenter, searchRadius);
   };
   
   // Update marker visibility
@@ -236,7 +238,7 @@ export default function MapView({
     if (mapLoaded) {
       initializeMarkers();
     }
-  }, [mode, sportFilter, mapLoaded]);
+  }, [mode, sportFilter, mapLoaded, searchRadius]);
 
   // Handle selected item changes
   useEffect(() => {

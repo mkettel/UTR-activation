@@ -34,6 +34,7 @@ export default function Home() {
   const [searchLocation, setSearchLocation] = useState('');
   const [sportFilter, setSportFilter] = useState('all');
   const [mapCenter, setMapCenter] = useState({ lng: -73.935242, lat: 40.730610 });
+  const [searchRadius, setSearchRadius] = useState(10); // Default 10 mile radius
 
   const handlePathSelect = (selectedMode: Mode) => {
     setMode(selectedMode);
@@ -113,6 +114,9 @@ export default function Home() {
                 onTournamentSelect={setSelectedTournament}
                 searchLocation={searchLocation}
                 onBack={handleBack}
+                mapCenter={mapCenter}
+                searchRadius={searchRadius}
+                onRadiusChange={setSearchRadius}
               />
             </motion.div>
             <Suspense fallback={<LoadingFallback />}>
@@ -130,6 +134,7 @@ export default function Home() {
                   selectedCourt={selectedCourt}
                   selectedTournament={selectedTournament}
                   sportFilter={sportFilter}
+                  searchRadius={searchRadius}
                 />
               </motion.div>
             </Suspense>
