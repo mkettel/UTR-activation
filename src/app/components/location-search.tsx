@@ -26,7 +26,7 @@ export default function LocationSearch({ onSearch, onLocationSelect }: LocationS
       onSearch('New York');
       onLocationSelect(-74.0060, 40.7128); // NYC coordinates
     }
-  }, []);
+  }, [onLocationSelect, onSearch, searchValue]);
 
   const handleSearch = async (value: string) => {
     if (!value.trim()) {
