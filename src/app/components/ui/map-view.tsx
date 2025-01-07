@@ -6,6 +6,9 @@ import { Tournament, mockTournaments } from '@/app/data/tournaments';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { filterItems } from '@/app/utils/filtering';
 import * as turf from '@turf/turf';
+import TournamentPopup from './TournamentPopup';
+import * as ReactDOMServer from 'react-dom/server';
+import CourtPopup from './CourtPopup';
 
 interface MapViewProps {
   mode: 'tournament' | 'play';
@@ -38,6 +41,7 @@ export default function MapView({
   const [zoom, setZoom] = useState(13);
   const [mapLoaded, setMapLoaded] = useState(false);
   const radiusCircleRef = useRef<mapboxgl.Layer | null>(null);
+  
 
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
@@ -81,32 +85,27 @@ export default function MapView({
 
   // Create popup content based on mode
   const createPopup = (item: Court | Tournament) => {
-    console.log('data', item)
-    return new mapboxgl.Popup({
-      offset: 25,
-      closeButton: false
-    }).setHTML(
-      mode === 'tournament' 
-        ? `
-          <div class="p-2">
-            <h3 class="font-bold text-black text-sm">${(item as Tournament).name}</h3>
-            <p class="text-xs text-gray-800 mt-1">${(item as Tournament).address}</p>
-            <p class="text-xs text-gray-800 mt-1">Level: ${(item as Tournament).level}</p>
-            <p class="text-xs mt-1">Spots: ${(item as Tournament).spotsAvailable}/${(item as Tournament).totalSpots}</p>
-            <p class="text-xs mt-1">Price: $${(item as Tournament).price}</p>            
-          </div>
-        `
-        : `
-          <div class="p-2">
-            <h3 class="font-bold text-black text-sm">${(item as Court).name}</h3>
-            <p class="text-xs text-gray-800 mt-1">${(item as Court).address}</p>
-            <p class="text-xs text-gray-800 mt-1">${(item as Court).courtCount} courts • ${(item as Court).surface}</p>
-            <p class="text-xs mt-2 ${(item as Court).isOpen ? 'text-green-600' : 'text-red-600'}">
-              ${(item as Court).isOpen ? 'Open' : 'Closed'}
-            </p>
-          </div>
-        `
-    );
+    if (mode === 'tournament') {
+      return new mapboxgl.Popup({
+        offset: 25,
+        closeButton: true,
+        maxWidth: '320px'
+      }).setHTML(
+        ReactDOMServer.renderToString(
+          <TournamentPopup tournament={item as Tournament} />
+        )
+      );
+    } else {
+      return new mapboxgl.Popup({
+        offset: 25,
+        closeButton: true,
+        maxWidth: '320px'
+      }).setHTML(
+        ReactDOMServer.renderToString(
+          <CourtPopup court={item as Court} />
+        )
+      );
+    }
   };
 
   const updateRadiusCircle = () => {
