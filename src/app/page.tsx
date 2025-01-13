@@ -24,6 +24,10 @@ function LoadingFallback() {
 }
 
 export default function Home() {
+  // Simplified step type
+  type Step = 'landing' | 'main';
+  type Mode = 'tournament' | 'play';
+
   // Flow control
   const [currentStep, setCurrentStep] = useState<Step>('landing');
   const [mode, setMode] = useState<Mode>('tournament');
@@ -34,32 +38,27 @@ export default function Home() {
   const [searchLocation, setSearchLocation] = useState('');
   const [sportFilter, setSportFilter] = useState('all');
   const [mapCenter, setMapCenter] = useState({ lng: -73.935242, lat: 40.730610 });
-  const [searchRadius, setSearchRadius] = useState(4); // Default 10 mile radius
+  const [searchRadius, setSearchRadius] = useState(4);
 
   const handlePathSelect = (selectedMode: Mode) => {
     setMode(selectedMode);
-    setCurrentStep('location');
-  };
-
-  const handleLocationSelect = (location: string, lng: number, lat: number) => {
-    setSearchLocation(location);
-    setMapCenter({ lng, lat });
     setCurrentStep('main');
   };
 
   const handleBack = () => {
-    if (currentStep === 'location') {
-      setCurrentStep('landing');
-    } else if (currentStep === 'main') {
-      setCurrentStep('location');
-    }
+    setCurrentStep('landing');
+    // Reset states when going back to landing
+    setSelectedCourt(null);
+    setSelectedTournament(null);
+    setSearchLocation('');
+    setSportFilter('all');
   };
 
   const renderStep = () => {
     switch (currentStep) {
       case 'landing':
         return (
-          <div className='flex'>
+          <div className="flex">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -69,29 +68,15 @@ export default function Home() {
               <LandingChoice onPathSelect={handlePathSelect} />
             </motion.div>
             <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              exit={{ opacity: 0 }}
+              className="p-10"
             >
-              <img className='w-full h-full' src="pickle-bg.webp" alt="" />
+              <img className="w-full h-full rounded-xl" src="pickle-bg.webp" alt="" />
             </motion.div>
           </div>
-        );
-      case 'location':
-        return (
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            className="w-96"
-          >
-            <LocationStep 
-              onBack={handleBack}
-              onLocationSelect={handleLocationSelect}
-              mode={mode}
-            />
-          </motion.div>
         );
       case 'main':
         return (

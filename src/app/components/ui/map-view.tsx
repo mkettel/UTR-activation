@@ -249,7 +249,7 @@ export default function MapView({
 
     const newMap = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: 'mapbox://styles/pxldevops/cm5ven2m9009e01qodtufc4cr',
       center: [mapCenter.lng, mapCenter.lat],
       zoom: zoom
     });

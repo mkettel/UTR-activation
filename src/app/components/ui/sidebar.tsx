@@ -1,12 +1,15 @@
 import { motion } from 'framer-motion';
-import { Filter, MapPin, Sun, Moon, ArrowLeft, RotateCcw, MoveHorizontal } from 'lucide-react';
+import { Filter, MapPin, ArrowLeft, Navigation2, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { Court, mockCourts } from '@/app/data/courts';
 import { Tournament, mockTournaments } from '@/app/data/tournaments';
 import TournamentList from './TournamentList';
 import CourtList from './CourtList';
-import { filterItems } from '@/app/utils/filtering';
+import LocationSearch from '../location-search';
 import RadiusSelector from './RadiusSelector';
+import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { filterItems } from '@/app/utils/filtering';
 
 interface SidebarProps {
   mode: 'tournament' | 'play';
@@ -21,51 +24,58 @@ interface SidebarProps {
   onTournamentSelect: (tournament: Tournament | null) => void;
   searchLocation: string;
   onBack: () => void;
-  mapCenter: { lat: number; lng: number }; // Add this prop
-  searchRadius: number; // Add this prop
+  mapCenter: { lat: number; lng: number };
+  searchRadius: number;
   onRadiusChange: (radius: number) => void;
 }
 
-export default function Sidebar({ 
+export default function Sidebar({
   mode,
   onModeSwitch,
-  selectedCourt, 
+  selectedCourt,
   selectedTournament,
-  onSearch, 
+  onSearch,
   onLocationSelect,
-  onFilterChange, 
+  onFilterChange,
   sportFilter,
   onCourtSelect,
   onTournamentSelect,
   searchLocation,
   onBack,
   mapCenter,
-  searchRadius, 
+  searchRadius,
   onRadiusChange
 }: SidebarProps) {
-  const extractLocationParts = (location: string) => {
-    // Convert to lowercase for case-insensitive matching
-    const lowercaseLocation = location.toLowerCase();
-    
-    // Common US state abbreviations and full names that might appear in the address
-    const stateMatches = lowercaseLocation.match(/\b(ny|new york|nj|new jersey)\b/);
-    const cityMatches = lowercaseLocation.match(/\b(new york|brooklyn|queens|hoboken)\b/);
-    
-    return {
-      state: stateMatches ? stateMatches[0] : '',
-      city: cityMatches ? cityMatches[0] : ''
-    };
-  };
-  
-  const filteredItems = mode === 'tournament' 
-  ? filterItems(mockTournaments, mode, sportFilter, searchLocation, mapCenter, searchRadius)
-  : filterItems(mockCourts, mode, sportFilter, searchLocation, mapCenter, searchRadius);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
-  // Add debug logging
-  console.log('Filtered items:', filteredItems);
-  console.log('Search location:', searchLocation);
-  console.log('Sport filter:', sportFilter);
-  console.log('Mode:', mode);
+  const getCurrentLocation = () => {
+    setIsLoadingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        // Use reverse geocoding to get location name
+        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`)
+          .then(res => res.json())
+          .then(data => {
+            const locationName = data.features[0].place_name;
+            onSearch(locationName);
+            onLocationSelect(longitude, latitude);
+          })
+          .finally(() => setIsLoadingLocation(false));
+      },
+      (error) => {
+        console.error('Error getting location:', error);
+        setIsLoadingLocation(false);
+      }
+    );
+  };
+
+  // Get filtered items based on current filters and location
+  const filteredItems = mode === 'tournament' 
+    ? filterItems(mockTournaments, mode, sportFilter, searchLocation, mapCenter, searchRadius)
+    : filterItems(mockCourts, mode, sportFilter, searchLocation, mapCenter, searchRadius);
 
   return (
     <motion.div 
@@ -90,9 +100,52 @@ export default function Sidebar({
         </button>
       </div>
 
-      <h1 className="text-2xl text-black font-bold mb-6">
-        {mode === 'tournament' ? 'Tournaments Near You' : 'Available Courts'}
-      </h1>
+      <Collapsible defaultOpen className="space-y-4 mb-6" open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger className="flex items-center w-full text-left">
+          <div className="flex items-center flex-1">
+              <MapPin className="h-5 w-5 mr-2 text-gray-600" />
+              <div className="text-lg">Location</div>
+            </div>
+            <ChevronDown 
+              className={`h-5 w-5 transition-transform duration-200 ${
+                isOpen ? 'transform rotate-180' : ''
+              }`}
+            />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-4">
+          <button
+            onClick={getCurrentLocation}
+            disabled={isLoadingLocation}
+            className="w-full p-3 bg-blue-50 text-black hover:bg-blue-100 rounded-lg border-2 border-blue-200 
+                     flex items-center justify-center transition-colors duration-200"
+          >
+            {isLoadingLocation ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+            ) : (
+              <>
+                <Navigation2 className="h-5 w-5 text-black mr-2" />
+                Use Current Location
+              </>
+            )}
+          </button>
+          
+          <LocationSearch 
+            onSearch={onSearch}
+            onLocationSelect={(lng, lat, locationName) => {
+              onLocationSelect(lng, lat);
+              onSearch(locationName || '');
+            }}
+          />
+          
+          <RadiusSelector
+            currentLocation={mapCenter}
+            radius={searchRadius}
+            onRadiusChange={onRadiusChange}
+            mode={mode}
+          />
+        </CollapsibleContent>
+      </Collapsible>
+      <hr  className='mb-6'/>
 
       <div className="mb-6">
         <div className="flex items-center mb-3">
@@ -109,13 +162,12 @@ export default function Sidebar({
           <option value="pickleball">Pickleball Only</option>
         </select>
       </div>
+      <hr  className='mb-6'/>
 
-      <RadiusSelector
-        currentLocation={mapCenter}
-        radius={searchRadius}
-        onRadiusChange={onRadiusChange}
-        mode={mode}
-      />
+
+      <h2 className="text-xl font-bold mb-4">
+        {mode === 'tournament' ? 'Tournaments' : 'Courts'} Near You
+      </h2>
 
       {mode === 'tournament' ? (
         <TournamentList
