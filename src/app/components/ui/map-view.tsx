@@ -45,10 +45,10 @@ export default function MapView({
 
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
+    // This gets the filtered items
   const getFilteredItems = () => {
     const items = mode === 'tournament' ? mockTournaments : mockCourts;
     return filterItems(items, mode, sportFilter, location, mapCenter, searchRadius);
-    
   };
   
   // Update marker visibility
