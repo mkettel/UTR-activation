@@ -9,6 +9,7 @@ import * as turf from '@turf/turf';
 import TournamentPopup from './TournamentPopup';
 import * as ReactDOMServer from 'react-dom/server';
 import CourtPopup from './CourtPopup';
+import { TournamentLayer } from '../3d/TournamentLayer';
 
 interface MapViewProps {
   mode: 'tournament' | 'play';
@@ -41,6 +42,7 @@ export default function MapView({
   const [zoom, setZoom] = useState(13);
   const [mapLoaded, setMapLoaded] = useState(false);
   const radiusCircleRef = useRef<mapboxgl.Layer | null>(null);
+  const tournamentLayerRef = useRef<any>(null);
   
 
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
@@ -64,7 +66,6 @@ export default function MapView({
       }
     });
   };
-  // howdy
 
   // Create marker element based on mode
   const createMarkerElement = (item: Court | Tournament) => {
@@ -165,40 +166,100 @@ export default function MapView({
     Object.values(markersRef.current).forEach(marker => marker.remove());
     markersRef.current = {};
 
-    getFilteredItems().forEach(item => {
-      const el = createMarkerElement(item);
-      const popup = createPopup(item);
+    // Only create markers for courts, tournaments will use 3D models
+    if (mode === 'play') {
+      getFilteredItems().forEach(item => {
+        const el = createMarkerElement(item as Court);
+        const popup = createPopup(item);
 
-      const marker = new mapboxgl.Marker({
-        element: el,
-        anchor: 'bottom',
-        offset: [0, 0]
-      })
-        .setLngLat([item.location.lng, item.location.lat])
-        .setPopup(popup)
-        .addTo(map.current!);
+        const marker = new mapboxgl.Marker({
+          element: el,
+          anchor: 'bottom',
+          offset: [0, 0]
+        })
+          .setLngLat([item.location.lng, item.location.lat])
+          .setPopup(popup)
+          .addTo(map.current!);
 
-      el.addEventListener('click', () => {
-        if (mode === 'tournament') {
-          if (selectedTournament?.id === item.id) {
-            onTournamentSelect(null);
-            marker.togglePopup();
-          } else {
-            onTournamentSelect(item as Tournament);
-          }
-        } else {
+        el.addEventListener('click', () => {
           if (selectedCourt?.id === item.id) {
             onCourtSelect(null);
             marker.togglePopup();
           } else {
             onCourtSelect(item as Court);
           }
-        }
-      });
+        });
 
-      markersRef.current[item.id] = marker;
-    });
+        markersRef.current[item.id] = marker;
+      });
+    }
   };
+
+  // Add this effect to handle tournament layer
+  useEffect(() => {
+    if (!map.current || !mapLoaded || mode !== 'tournament') {
+      console.log('Skipping tournament layer:', { map: !!map.current, mapLoaded, mode });
+      return;
+    }
+
+    // Remove existing tournament layer if it exists
+    if (map.current.getLayer('3d-tournaments')) {
+      map.current.removeLayer('3d-tournaments');
+    }
+
+    // Create new tournament layer
+    const filteredTournaments = getFilteredItems() as Tournament[];
+    console.log('filteredTournaments:', filteredTournaments);
+
+    // Wait for style to be fully loaded
+    if (!map.current.isStyleLoaded()) {
+      console.log('Style not loaded yet, waiting...');
+      map.current.once('style.load', () => {
+        addTournamentLayer();
+      });
+      return;
+    }
+
+    addTournamentLayer();
+
+    function addTournamentLayer() {
+      try {
+        // Get all available layers
+        const layers = map.current?.getStyle()?.layers || [];
+        console.log('Available layers:', layers.map(l => l.id));
+
+        // Create the tournament layer
+        tournamentLayerRef.current = new TournamentLayer(map.current!, filteredTournaments);
+        const customLayer = tournamentLayerRef.current.createLayer();
+
+        // Try to find a suitable layer to add before
+        // Look for label or symbol layers, or any layer that might be above the base map
+        const targetLayer = layers.find(layer => 
+          layer.type === 'symbol' || 
+          layer.id.includes('label') ||
+          layer.id.includes('poi') ||
+          layer.type === 'fill-extrusion'
+        );
+
+        console.log('Adding 3D layer before:', targetLayer?.id || 'at the top');
+
+        if (targetLayer) {
+          map.current!.addLayer(customLayer, targetLayer.id);
+        } else {
+          map.current!.addLayer(customLayer);
+        }
+      } catch (error) {
+        console.error('Error adding tournament layer:', error);
+      }
+    }
+
+    // Cleanup
+    return () => {
+      if (map.current?.getLayer('3d-tournaments')) {
+        map.current.removeLayer('3d-tournaments');
+      }
+    };
+  }, [mode, sportFilter, mapLoaded, searchRadius]);
 
   const add3DBuildings = (map: mapboxgl.Map) => {
     // Add custom 3D building layer
@@ -252,10 +313,15 @@ export default function MapView({
       container: mapContainer.current,
       style: 'mapbox://styles/pxldevops/cm5ven2m9009e01qodtufc4cr',
       center: [mapCenter.lng, mapCenter.lat],
-      zoom: zoom
+      zoom: zoom,
+      antialias: true
     });
 
     newMap.on('style.load', () => {
+      console.log('Style loaded');
+      const layers = newMap.getStyle()?.layers;
+      console.log('Initial layers:', layers?.map(l => l.id));
+      
       add3DBuildings(newMap);
       newMap.addControl(new mapboxgl.NavigationControl({
         visualizePitch: true
