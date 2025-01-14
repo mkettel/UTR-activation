@@ -269,7 +269,7 @@ export default function MapView({
 
     const newMap = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/pxldevops/cm5ven2m9009e01qodtufc4cr',
+      style: 'mapbox://styles/mapbox/streets-v12',
       center: [mapCenter.lng, mapCenter.lat],
       zoom: zoom,
       antialias: true
@@ -279,6 +279,73 @@ export default function MapView({
       console.log('Style loaded');
       const layers = newMap.getStyle()?.layers;
       console.log('Initial layers:', layers?.map(l => l.id));
+      console.log('style:', newMap.getStyle());
+
+      // Add custom styling
+    // Background
+    newMap.setPaintProperty('background', 'background-color', '#0c1015');
+    
+    // Water
+    if (newMap.getLayer('water')) {
+      newMap.setPaintProperty('water', 'fill-color', '#1a1f24');
+    }
+    
+    // Land
+    if (newMap.getLayer('land')) {
+      newMap.setPaintProperty('land', 'background-color', '#141619');
+    }
+
+      // Roads
+    const roadLayers = ['road-minor', 'road-major', 'road-primary', 'road-motorway'];
+    roadLayers.forEach(layer => {
+      if (newMap.getLayer(layer)) {
+        newMap.setPaintProperty(layer, 'fill-color', '#141619');
+      }
+    });
+
+    // Buildings
+    if (newMap.getLayer('building')) {
+      newMap.setPaintProperty('building', 'fill-color', '#1f2327');
+      newMap.setPaintProperty('building', 'fill-outline-color', '#2a2e33');
+    }
+
+    // Parks and nature
+    if (newMap.getLayer('park')) {
+      newMap.setPaintProperty('park', 'fill-color', '#162018');
+    }
+
+    // Add 3D buildings with custom styling
+    try {
+      newMap.addLayer({
+        'id': '3d-buildings',
+        'source': 'composite',
+        'source-layer': 'building',
+        'filter': ['==', 'extrude', 'true'],
+        'type': 'fill-extrusion',
+        'minzoom': 15,
+        'paint': {
+          'fill-extrusion-color': '#2a2e33',
+          'fill-extrusion-height': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            15, 0,
+            15.05, ['get', 'height']
+          ],
+          'fill-extrusion-base': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            15, 0,
+            15.05, ['get', 'min_height']
+          ],
+          'fill-extrusion-opacity': 0.7,
+          'fill-extrusion-vertical-gradient': true
+        }
+      });
+    } catch (error) {
+      console.error('Error adding 3D buildings:', error);
+    }
       
       newMap.addControl(new mapboxgl.NavigationControl({
         visualizePitch: true
