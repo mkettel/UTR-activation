@@ -261,49 +261,7 @@ export default function MapView({
     };
   }, [mode, sportFilter, mapLoaded, searchRadius]);
 
-  const add3DBuildings = (map: mapboxgl.Map) => {
-    // Add custom 3D building layer
-    map.addLayer({
-      'id': '3d-buildings',
-      'source': 'composite',
-      'source-layer': 'building',
-      'filter': ['==', 'extrude', 'true'],
-      'type': 'fill-extrusion',
-      'minzoom': 15,
-      'paint': {
-        'fill-extrusion-color': [
-          'interpolate',
-          ['linear'],
-          ['get', 'height'],
-          0, '#e6e6e6',
-          50, '#d9d9d9',
-          100, '#cccccc',
-          200, '#bfbfbf',
-          400, '#b3b3b3'
-        ],
-        'fill-extrusion-height': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          15,
-          0,
-          15.05,
-          ['get', 'height']
-        ],
-        'fill-extrusion-base': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          15,
-          0,
-          15.05,
-          ['get', 'min_height']
-        ],
-        'fill-extrusion-opacity': 0.6,
-        'fill-extrusion-vertical-gradient': true
-      }
-    }, 'waterway-label');
-  };
+  
 
   // Map initialization and cleanup
   useEffect(() => {
@@ -322,7 +280,6 @@ export default function MapView({
       const layers = newMap.getStyle()?.layers;
       console.log('Initial layers:', layers?.map(l => l.id));
       
-      add3DBuildings(newMap);
       newMap.addControl(new mapboxgl.NavigationControl({
         visualizePitch: true
       }));
