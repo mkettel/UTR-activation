@@ -64,6 +64,7 @@ export default function MapView({
       }
     });
   };
+  // howdy
 
   // Create marker element based on mode
   const createMarkerElement = (item: Court | Tournament) => {
