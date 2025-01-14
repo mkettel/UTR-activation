@@ -2,6 +2,12 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import mapboxgl from 'mapbox-gl';
 import { Tournament } from '@/app/data/tournaments';
+import * as ReactDOMServer from 'react-dom/server';
+import TournamentPopup from '@/app/components/ui/TournamentPopup';
+import type { FC } from 'react';
+
+// Define the popup component type
+type TournamentPopupType = FC<{ tournament: Tournament }>;
 
 export class TournamentLayer {
   private scene: THREE.Scene;
@@ -9,6 +15,7 @@ export class TournamentLayer {
   private renderer: THREE.WebGLRenderer | null = null;
   private map: mapboxgl.Map;
   private tournaments: Tournament[];
+  private markers: mapboxgl.Marker[] = [];
 
   constructor(map: mapboxgl.Map, tournaments: Tournament[]) {
     this.map = map;
@@ -25,8 +32,45 @@ export class TournamentLayer {
     directionalLight2.position.set(0, 70, 100).normalize();
     this.scene.add(directionalLight2);
 
-    // Load models for each tournament
+    // Load 3D models and create invisible markers
     this.loadTournamentModels();
+    this.createInteractionMarkers();
+  }
+
+  private createInteractionMarkers() {
+    // Clear any existing markers
+    this.markers.forEach(marker => marker.remove());
+    this.markers = [];
+
+    this.tournaments.forEach(tournament => {
+      // Create an invisible clickable element
+      const el = document.createElement('div');
+      el.className = 'cursor-pointer';
+      el.style.width = '40px';  // Make click target reasonably sized
+      el.style.height = '40px';
+      el.style.opacity = '0';   // Make it invisible
+      
+      // Create the marker
+      const marker = new mapboxgl.Marker({
+        element: el,
+        anchor: 'center'
+      })
+        .setLngLat([tournament.location.lng, tournament.location.lat])
+        .setPopup(
+          new mapboxgl.Popup({
+            offset: 25,
+            closeButton: true,
+            maxWidth: '320px'
+          }).setHTML(
+            ReactDOMServer.renderToString(
+              (TournamentPopup as TournamentPopupType)({ tournament })
+            )
+          )
+        )
+        .addTo(this.map);
+
+      this.markers.push(marker);
+    });
   }
 
   private loadTournamentModels() {
@@ -49,7 +93,6 @@ export class TournamentLayer {
         rotateX: modelRotate[0],
         rotateY: modelRotate[1],
         rotateZ: modelRotate[2],
-        /* Multiply by a scale factor to make the model visible */
         scale: modelAsMercatorCoordinate.meterInMercatorCoordinateUnits() * 150
       };
 
@@ -134,5 +177,11 @@ export class TournamentLayer {
         this.map.triggerRepaint();
       }
     };
+  }
+
+  public cleanup() {
+    // Remove all markers when cleaning up
+    this.markers.forEach(marker => marker.remove());
+    this.markers = [];
   }
 }
