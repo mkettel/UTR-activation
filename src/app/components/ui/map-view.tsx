@@ -281,71 +281,180 @@ export default function MapView({
       console.log('Initial layers:', layers?.map(l => l.id));
       console.log('style:', newMap.getStyle());
 
+      const labelLayerId = layers?.find(
+        (layer) => layer.type === 'symbol' && layer.layout && layer.layout['text-field']
+      )?.id;
+      console.log('layers:', layers);
+
+      // Add the 3D buildings layer before labels
+      newMap.addLayer(
+        {
+          'id': '3d-buildings',
+          'source': 'composite',
+          'source-layer': 'building',
+          'filter': ['==', 'extrude', 'true'],
+          'type': 'fill-extrusion',
+          'minzoom': 15,
+          'paint': {
+            'fill-extrusion-color': '#01C0F7',
+            'fill-extrusion-height': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              14,
+              0,
+              14.05,
+              ['get', 'height']
+            ],
+            'fill-extrusion-base': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              14,
+              0,
+              14.05,
+              ['get', 'min_height']
+            ],
+            'fill-extrusion-opacity': 0.95
+          }
+        },
+        labelLayerId
+      );
       // Add custom styling
-    // Background
-    newMap.setPaintProperty('background', 'background-color', '#0c1015');
     
-    // Water
-    if (newMap.getLayer('water')) {
-      newMap.setPaintProperty('water', 'fill-color', '#1a1f24');
-    }
     
-    // Land
-    if (newMap.getLayer('land')) {
-      newMap.setPaintProperty('land', 'background-color', '#141619');
-    }
+      // LAND & STRUCTURE LAYERS
+      const landLayers = [
+        'landuse',
+        'landcover',
+        'land-structure-polygon',
+        'landuse-commercial',
+        'landuse-civic',
+        'commercial',
+        'commercial-building'
+      ];
 
-      // Roads
-    const roadLayers = ['road-minor', 'road-major', 'road-primary', 'road-motorway'];
-    roadLayers.forEach(layer => {
-      if (newMap.getLayer(layer)) {
-        newMap.setPaintProperty(layer, 'fill-color', '#141619');
-      }
-    });
-
-    // Buildings
-    if (newMap.getLayer('building')) {
-      newMap.setPaintProperty('building', 'fill-color', '#1f2327');
-      newMap.setPaintProperty('building', 'fill-outline-color', '#2a2e33');
-    }
-
-    // Parks and nature
-    if (newMap.getLayer('park')) {
-      newMap.setPaintProperty('park', 'fill-color', '#162018');
-    }
-
-    // Add 3D buildings with custom styling
-    try {
-      newMap.addLayer({
-        'id': '3d-buildings',
-        'source': 'composite',
-        'source-layer': 'building',
-        'filter': ['==', 'extrude', 'true'],
-        'type': 'fill-extrusion',
-        'minzoom': 15,
-        'paint': {
-          'fill-extrusion-color': '#2a2e33',
-          'fill-extrusion-height': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            15, 0,
-            15.05, ['get', 'height']
-          ],
-          'fill-extrusion-base': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            15, 0,
-            15.05, ['get', 'min_height']
-          ],
-          'fill-extrusion-opacity': 0.7,
-          'fill-extrusion-vertical-gradient': true
+      landLayers.forEach(layer => {
+        if (newMap.getLayer(layer)) {
+          newMap.setPaintProperty(layer, 'fill-color', '#00decb');
+          newMap.setPaintProperty(layer, 'fill-opacity', 0.8);
         }
       });
-    } catch (error) {
-      console.error('Error adding 3D buildings:', error);
-    }
+
+      // WATER FEATURES
+      const waterLayers = [
+        'water',
+        // 'waterway',
+        // 'water-shadow',
+        // 'waterway-shadow',
+        // 'water-depth'
+      ];
+
+      waterLayers.forEach(layer => {
+        if (newMap.getLayer(layer)) {
+          newMap.setPaintProperty(layer, 'fill-color', '#01C0F7');
+          newMap.setPaintProperty(layer, 'fill-opacity', 1);
+        }
+      });
+
+      // ROADS - MAJOR
+      const majorRoadLayers = [
+        'road-motorway-trunk',
+        'road-primary',
+        'road-secondary-tertiary',
+        'bridge-motorway-trunk',
+        'bridge-primary',
+        'bridge-secondary-tertiary',
+        'tunnel-motorway-trunk',
+        'tunnel-primary',
+        'tunnel-secondary-tertiary'
+      ];
+
+      majorRoadLayers.forEach(layer => {
+        if (newMap.getLayer(layer)) {
+          newMap.setPaintProperty(layer, 'line-color', '#ffffff');
+          newMap.setPaintProperty(layer, 'line-width', 2);
+          newMap.setPaintProperty(layer, 'line-opacity', 0.8);
+        }
+      });
+
+      // ROADS - CASES (OUTLINES)
+      const roadCaseLayers = [
+        'road-motorway-trunk-case',
+        'road-primary-case',
+        'road-secondary-tertiary-case',
+        'road-street-case',
+        'bridge-motorway-trunk-case',
+        'bridge-primary-case',
+        'bridge-secondary-tertiary-case',
+        'bridge-street-case'
+      ];
+
+      roadCaseLayers.forEach(layer => {
+        if (newMap.getLayer(layer)) {
+          newMap.setPaintProperty(layer, 'line-color', '#7DE0D3');
+          newMap.setPaintProperty(layer, 'line-width', 3);
+          newMap.setPaintProperty(layer, 'line-opacity', 0.5);
+        }
+      });
+
+      // ROADS - MINOR
+      const minorRoadLayers = [
+        'road-minor',
+        'road-minor-low',
+        'road-street',
+        'road-street-low',
+        'bridge-minor',
+        'bridge-street',
+        'tunnel-minor',
+        'tunnel-street'
+      ];
+
+      minorRoadLayers.forEach(layer => {
+        if (newMap.getLayer(layer)) {
+          newMap.setPaintProperty(layer, 'line-color', '#ffffff');
+          newMap.setPaintProperty(layer, 'line-width', 1);
+          newMap.setPaintProperty(layer, 'line-opacity', 0.4);
+        }
+      });
+
+      // PATHS & PEDESTRIAN
+      const pathLayers = [
+        'road-path',
+        'road-pedestrian',
+        'road-steps',
+        'bridge-path',
+        'bridge-pedestrian',
+        'bridge-steps',
+        'tunnel-path',
+        'tunnel-pedestrian',
+        'tunnel-steps'
+      ];
+
+      pathLayers.forEach(layer => {
+        if (newMap.getLayer(layer)) {
+          newMap.setPaintProperty(layer, 'line-color', '#4a8f88');
+          newMap.setPaintProperty(layer, 'line-width', 0.5);
+          newMap.setPaintProperty(layer, 'line-opacity', 0.3);
+        }
+      });
+
+      // TRANSIT
+      const transitLayers = [
+        'road-rail',
+        'road-rail-tracks',
+        'bridge-rail',
+        'bridge-rail-tracks',
+        'tunnel-rail',
+        'tunnel-rail-tracks'
+      ];
+
+      transitLayers.forEach(layer => {
+        if (newMap.getLayer(layer)) {
+          newMap.setPaintProperty(layer, 'line-color', '#2a2e33');
+          newMap.setPaintProperty(layer, 'line-opacity', 0.5);
+        }
+      });
       
       newMap.addControl(new mapboxgl.NavigationControl({
         visualizePitch: true

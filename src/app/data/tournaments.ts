@@ -38,7 +38,7 @@ export interface Tournament {
       price: 75,
       spotsAvailable: 12,
       totalSpots: 32
-    }
+    },
     // Add more mock tournaments as needed
   ];
   
