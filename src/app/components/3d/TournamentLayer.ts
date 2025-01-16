@@ -86,6 +86,20 @@ export class TournamentLayer {
         modelAltitude
       );
 
+      // Calculate base scale factor
+      const baseScale = modelAsMercatorCoordinate.meterInMercatorCoordinateUnits() * 150;
+      
+      // Calculate zoom-based scale factor with improved visibility at lower zoom levels
+      const currentZoom = this.map.getZoom();
+      
+      // Exponential scaling factor that increases more dramatically at lower zoom levels
+      const zoomScaleFactor = Math.max(1, Math.pow(3, (14 - currentZoom)));
+      
+      // Add minimum and maximum bounds to prevent extreme scaling
+      const minScale = 1;
+      const maxScale = 500;
+      const boundedScaleFactor = Math.min(Math.max(zoomScaleFactor, minScale), maxScale);
+      
       const modelTransform = {
         translateX: modelAsMercatorCoordinate.x,
         translateY: modelAsMercatorCoordinate.y,
@@ -93,7 +107,7 @@ export class TournamentLayer {
         rotateX: modelRotate[0],
         rotateY: modelRotate[1],
         rotateZ: modelRotate[2],
-        scale: modelAsMercatorCoordinate.meterInMercatorCoordinateUnits() * 150
+        scale: baseScale * boundedScaleFactor
       };
 
       loader.load(
@@ -131,11 +145,25 @@ export class TournamentLayer {
       },
       render: (gl: WebGLRenderingContext, matrix: number[]) => {
         if (!this.renderer) return;
+        
+        const currentZoom = this.map.getZoom();
+        
+        // Exponential scaling factor that increases more dramatically at lower zoom levels
+        const zoomScaleFactor = Math.max(1, Math.pow(3, (14 - currentZoom)));
+        
+        // Add minimum and maximum bounds to prevent extreme scaling
+        const minScale = 1;
+        const maxScale = 500;
+        const boundedScaleFactor = Math.min(Math.max(zoomScaleFactor, minScale), maxScale);
 
         // Update each model's transform
         this.scene.traverse((node) => {
           if (node instanceof THREE.Object3D && node.userData.transform) {
             const transform = node.userData.transform;
+            
+            // Update scale based on current zoom level with bounded scaling
+            const baseScale = transform.scale / boundedScaleFactor; // Remove previous zoom scaling
+            transform.scale = baseScale * boundedScaleFactor; // Apply new zoom scaling with bounds
 
             const rotationX = new THREE.Matrix4().makeRotationAxis(
               new THREE.Vector3(1, 0, 0),
